@@ -88,42 +88,35 @@ namespace Canchas.Api.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var reservacion =
-                await _context.Reservaciones
-                    .AsNoTracking()
-                    .Where(r =>
-                        r.IdReservacion == id)
-                    .Select(r => new
-                    {
-                        r.IdReservacion,
-                        r.IdCliente,
-                        Cliente = r.Cliente.Nombre,
-                        r.IdCancha,
-                        Cancha = r.Cancha.Nombre,
-                        TipoCancha = r.Cancha.Tipo,
-                        Estado =
-                            r.EstadoReservacion.Nombre,
-                        r.FechaInicio,
-                        r.FechaFin,
-                        r.DuracionHoras,
-                        r.PrecioHora,
-                        r.Total,
-                        r.Observaciones,
-                        Usuario =
-                            r.Usuario.NombreCompleto,
-                        r.FechaCreacion
-                    })
-                    .FirstOrDefaultAsync();
+            var reservacion = await _context.Reservaciones
+                .AsNoTracking()
+                .Where(r => r.IdReservacion == id)
+                .Select(r => new
+                {
+                    r.IdReservacion,
+                    r.IdCliente,
+                    Cliente = r.Cliente.Nombre,
+                    r.IdCancha,
+                    Cancha = r.Cancha.Nombre,
+                    TipoCancha = r.Cancha.Tipo,
+                    Estado = r.EstadoReservacion.Nombre,
+                    r.FechaInicio,
+                    r.FechaFin,
+                    r.DuracionHoras,
+                    r.PrecioHora,
+                    r.Total,
+                    r.Observaciones,
+                    Usuario = r.Usuario.NombreCompleto,
+                    r.FechaCreacion
+                })
+                .FirstOrDefaultAsync();
 
             if (reservacion == null)
             {
-                return NotFound(
-                    new
-                    {
-                        mensaje =
-                            "Reservación no encontrada."
-                    }
-                );
+                return NotFound(new
+                {
+                    mensaje = "Reservación no encontrada."
+                });
             }
 
             return Ok(reservacion);
@@ -137,58 +130,46 @@ namespace Canchas.Api.Controllers
         {
             if (inicio >= fin)
             {
-                return BadRequest(
-                    new
-                    {
-                        mensaje =
-                            "La fecha y hora final deben ser mayores a la inicial."
-                    }
-                );
+                return BadRequest(new
+                {
+                    mensaje =
+                        "La fecha y hora final deben ser mayores a la inicial."
+                });
             }
 
             var cancha =
-                await _context.Canchas
-                    .FindAsync(idCancha);
+                await _context.Canchas.FindAsync(idCancha);
 
             if (cancha == null || !cancha.Activo)
             {
-                return Ok(
-                    new
-                    {
-                        disponible = false,
-                        mensaje =
-                            "La cancha no existe o se encuentra inactiva."
-                    }
-                );
+                return Ok(new
+                {
+                    disponible = false,
+                    mensaje =
+                        "La cancha no existe o se encuentra inactiva."
+                });
             }
 
             var estadoCancelado =
                 await _context.EstadosReservacion
-                    .SingleAsync(
-                        e => e.Nombre == "CANCELADA"
-                    );
+                .SingleAsync(e =>
+                    e.Nombre == "CANCELADA");
 
             var existeCruce =
-                await _context.Reservaciones
-                    .AnyAsync(r =>
-                        r.IdCancha == idCancha &&
-                        r.IdEstadoReservacion !=
-                            estadoCancelado
-                                .IdEstadoReservacion &&
-                        inicio < r.FechaFin &&
-                        fin > r.FechaInicio
-                    );
+                await _context.Reservaciones.AnyAsync(r =>
+                    r.IdCancha == idCancha &&
+                    r.IdEstadoReservacion !=
+                    estadoCancelado.IdEstadoReservacion &&
+                    inicio < r.FechaFin &&
+                    fin > r.FechaInicio);
 
-            return Ok(
-                new
-                {
-                    disponible = !existeCruce,
-
-                    mensaje = existeCruce
-                        ? "La cancha ya se encuentra ocupada dentro del horario seleccionado."
-                        : "Horario disponible."
-                }
-            );
+            return Ok(new
+            {
+                disponible = !existeCruce,
+                mensaje = existeCruce
+                    ? "La cancha ya se encuentra ocupada dentro del horario seleccionado."
+                    : "Horario disponible."
+            });
         }
 
         [HttpPost]
@@ -197,150 +178,131 @@ namespace Canchas.Api.Controllers
         {
             if (dto.FechaInicio >= dto.FechaFin)
             {
-                return BadRequest(
-                    new
-                    {
-                        mensaje =
-                            "La fecha y hora final deben ser mayores a la inicial."
-                    }
-                );
+                return BadRequest(new
+                {
+                    mensaje =
+                        "La fecha y hora final deben ser mayores a la inicial."
+                });
             }
 
-            var cliente =
-                await _context.Clientes
-                    .FirstOrDefaultAsync(c =>
-                        c.IdCliente == dto.IdCliente &&
-                        c.Activo);
+            var cliente = await _context.Clientes
+                .FirstOrDefaultAsync(c =>
+                    c.IdCliente == dto.IdCliente &&
+                    c.Activo);
 
             if (cliente == null)
             {
-                return BadRequest(
-                    new
-                    {
-                        mensaje =
-                            "Cliente inexistente o inactivo."
-                    }
-                );
+                return BadRequest(new
+                {
+                    mensaje =
+                        "Cliente inexistente o inactivo."
+                });
             }
 
-            var cancha =
-                await _context.Canchas
-                    .FirstOrDefaultAsync(c =>
-                        c.IdCancha == dto.IdCancha &&
-                        c.Activo);
+            var cancha = await _context.Canchas
+                .FirstOrDefaultAsync(c =>
+                    c.IdCancha == dto.IdCancha &&
+                    c.Activo);
 
             if (cancha == null)
             {
-                return BadRequest(
-                    new
-                    {
-                        mensaje =
-                            "Cancha inexistente o inactiva."
-                    }
-                );
+                return BadRequest(new
+                {
+                    mensaje =
+                        "Cancha inexistente o inactiva."
+                });
             }
 
             var estadoReservado =
                 await _context.EstadosReservacion
-                    .SingleAsync(
-                        e => e.Nombre == "RESERVADA"
-                    );
+                .SingleAsync(e =>
+                    e.Nombre == "RESERVADA");
 
             var estadoCancelado =
                 await _context.EstadosReservacion
-                    .SingleAsync(
-                        e => e.Nombre == "CANCELADA"
-                    );
+                .SingleAsync(e =>
+                    e.Nombre == "CANCELADA");
 
-            await using var transaccion =
-                await _context.Database
-                    .BeginTransactionAsync(
-                        IsolationLevel.Serializable
-                    );
+            var strategy =
+                _context.Database.CreateExecutionStrategy();
 
-            var existeCruce =
-                await _context.Reservaciones
-                    .AnyAsync(r =>
-                        r.IdCancha == dto.IdCancha &&
-                        r.IdEstadoReservacion !=
-                            estadoCancelado
-                                .IdEstadoReservacion &&
-                        dto.FechaInicio < r.FechaFin &&
-                        dto.FechaFin > r.FechaInicio
-                    );
-
-            if (existeCruce)
+            async Task<IActionResult> EjecutarTransaccion()
             {
-                await transaccion.RollbackAsync();
+                await using var transaccion =
+                    await _context.Database
+                        .BeginTransactionAsync(
+                            IsolationLevel.Serializable);
 
-                return Conflict(
-                    new
+                var existeCruce =
+                    await _context.Reservaciones
+                        .AnyAsync(r =>
+                            r.IdCancha == dto.IdCancha &&
+                            r.IdEstadoReservacion !=
+                            estadoCancelado.IdEstadoReservacion &&
+                            dto.FechaInicio < r.FechaFin &&
+                            dto.FechaFin > r.FechaInicio);
+
+                if (existeCruce)
+                {
+                    await transaccion.RollbackAsync();
+
+                    return Conflict(new
                     {
                         mensaje =
                             "La cancha ya se encuentra ocupada dentro del horario seleccionado."
-                    }
-                );
-            }
+                    });
+                }
 
-            var duracionHoras =
-                Math.Round(
-                    (decimal)
-                    (dto.FechaFin - dto.FechaInicio)
+                var duracionHoras =
+                    Math.Round(
+                        (decimal)
+                        (dto.FechaFin - dto.FechaInicio)
                         .TotalMinutes / 60m,
-                    2
+                        2);
+
+                var idUsuario = int.Parse(
+                    User.FindFirstValue(
+                        ClaimTypes.NameIdentifier)!
                 );
 
-            var idUsuario = int.Parse(
-                User.FindFirstValue(
-                    ClaimTypes.NameIdentifier
-                )!
-            );
+                var reservacion = new Reservacion
+                {
+                    IdCliente = dto.IdCliente,
+                    IdCancha = dto.IdCancha,
+                    IdEstadoReservacion =
+                        estadoReservado.IdEstadoReservacion,
+                    FechaInicio = dto.FechaInicio,
+                    FechaFin = dto.FechaFin,
+                    DuracionHoras = duracionHoras,
+                    PrecioHora = cancha.PrecioHora,
+                    Total = Math.Round(
+                        duracionHoras *
+                        cancha.PrecioHora,
+                        2),
+                    Observaciones =
+                        dto.Observaciones?.Trim(),
+                    IdUsuario = idUsuario,
+                    FechaCreacion = DateTime.UtcNow
+                };
 
-            var reservacion = new Reservacion
-            {
-                IdCliente = dto.IdCliente,
-                IdCancha = dto.IdCancha,
+                _context.Reservaciones.Add(reservacion);
 
-                IdEstadoReservacion =
-                    estadoReservado
-                        .IdEstadoReservacion,
+                await _context.SaveChangesAsync();
+                await transaccion.CommitAsync();
 
-                FechaInicio = dto.FechaInicio,
-                FechaFin = dto.FechaFin,
-                DuracionHoras = duracionHoras,
-                PrecioHora = cancha.PrecioHora,
-
-                Total = Math.Round(
-                    duracionHoras *
-                    cancha.PrecioHora,
-                    2
-                ),
-
-                Observaciones =
-                    dto.Observaciones?.Trim(),
-
-                IdUsuario = idUsuario,
-                FechaCreacion = DateTime.UtcNow
-            };
-
-            _context.Reservaciones.Add(reservacion);
-
-            await _context.SaveChangesAsync();
-
-            await transaccion.CommitAsync();
-
-            return Ok(
-                new
+                return Ok(new
                 {
                     mensaje =
                         "Reservación registrada correctamente.",
-
                     reservacion.IdReservacion,
                     reservacion.DuracionHoras,
                     reservacion.PrecioHora,
                     reservacion.Total
-                }
-            );
+                });
+            }
+
+            return await strategy.ExecuteAsync(
+                EjecutarTransaccion);
         }
 
         [HttpPut("{id:int}")]
@@ -350,287 +312,242 @@ namespace Canchas.Api.Controllers
         {
             if (dto.FechaInicio >= dto.FechaFin)
             {
-                return BadRequest(
-                    new
-                    {
-                        mensaje = "Horario inválido."
-                    }
-                );
+                return BadRequest(new
+                {
+                    mensaje = "Horario inválido."
+                });
             }
 
             var reservacion =
                 await _context.Reservaciones
-                    .Include(
-                        r => r.EstadoReservacion
-                    )
-                    .FirstOrDefaultAsync(
-                        r => r.IdReservacion == id
-                    );
+                .Include(r => r.EstadoReservacion)
+                .FirstOrDefaultAsync(r =>
+                    r.IdReservacion == id);
 
             if (reservacion == null)
             {
-                return NotFound(
-                    new
-                    {
-                        mensaje =
-                            "Reservación no encontrada."
-                    }
-                );
+                return NotFound(new
+                {
+                    mensaje =
+                        "Reservación no encontrada."
+                });
             }
 
-            if (
-                reservacion.EstadoReservacion.Nombre
-                != "RESERVADA"
-            )
+            if (reservacion.EstadoReservacion.Nombre
+                != "RESERVADA")
             {
-                return BadRequest(
-                    new
-                    {
-                        mensaje =
-                            "Solo una reservación RESERVADA puede modificarse."
-                    }
-                );
+                return BadRequest(new
+                {
+                    mensaje =
+                        "Solo una reservación RESERVADA puede modificarse."
+                });
             }
 
             var cliente =
                 await _context.Clientes
-                    .FirstOrDefaultAsync(c =>
-                        c.IdCliente == dto.IdCliente &&
-                        c.Activo);
+                .FirstOrDefaultAsync(c =>
+                    c.IdCliente == dto.IdCliente &&
+                    c.Activo);
 
             if (cliente == null)
             {
-                return BadRequest(
-                    new
-                    {
-                        mensaje =
-                            "Cliente inexistente o inactivo."
-                    }
-                );
+                return BadRequest(new
+                {
+                    mensaje =
+                        "Cliente inexistente o inactivo."
+                });
             }
 
             var cancha =
                 await _context.Canchas
-                    .FirstOrDefaultAsync(c =>
-                        c.IdCancha == dto.IdCancha &&
-                        c.Activo);
+                .FirstOrDefaultAsync(c =>
+                    c.IdCancha == dto.IdCancha &&
+                    c.Activo);
 
             if (cancha == null)
             {
-                return BadRequest(
-                    new
-                    {
-                        mensaje =
-                            "Cancha inexistente o inactiva."
-                    }
-                );
+                return BadRequest(new
+                {
+                    mensaje =
+                        "Cancha inexistente o inactiva."
+                });
             }
 
             var estadoCancelado =
                 await _context.EstadosReservacion
-                    .SingleAsync(
-                        e => e.Nombre == "CANCELADA"
-                    );
+                .SingleAsync(e =>
+                    e.Nombre == "CANCELADA");
 
-            await using var transaccion =
-                await _context.Database
+            var strategy =
+                _context.Database.CreateExecutionStrategy();
+
+            async Task<IActionResult> EjecutarTransaccion()
+            {
+                await using var transaccion =
+                    await _context.Database
                     .BeginTransactionAsync(
-                        IsolationLevel.Serializable
-                    );
+                        IsolationLevel.Serializable);
 
-            var existeCruce =
-                await _context.Reservaciones
+                var existeCruce =
+                    await _context.Reservaciones
                     .AnyAsync(r =>
                         r.IdReservacion != id &&
                         r.IdCancha == dto.IdCancha &&
                         r.IdEstadoReservacion !=
-                            estadoCancelado
-                                .IdEstadoReservacion &&
+                        estadoCancelado.IdEstadoReservacion &&
                         dto.FechaInicio < r.FechaFin &&
-                        dto.FechaFin > r.FechaInicio
-                    );
+                        dto.FechaFin > r.FechaInicio);
 
-            if (existeCruce)
-            {
-                await transaccion.RollbackAsync();
+                if (existeCruce)
+                {
+                    await transaccion.RollbackAsync();
 
-                return Conflict(
-                    new
+                    return Conflict(new
                     {
                         mensaje =
                             "La cancha ya se encuentra ocupada dentro del horario seleccionado."
-                    }
-                );
-            }
+                    });
+                }
 
-            var duracionHoras =
-                Math.Round(
-                    (decimal)
-                    (dto.FechaFin - dto.FechaInicio)
+                var duracionHoras =
+                    Math.Round(
+                        (decimal)
+                        (dto.FechaFin -
+                         dto.FechaInicio)
                         .TotalMinutes / 60m,
-                    2
-                );
+                        2);
 
-            reservacion.IdCliente =
-                dto.IdCliente;
+                reservacion.IdCliente =
+                    dto.IdCliente;
 
-            reservacion.IdCancha =
-                dto.IdCancha;
+                reservacion.IdCancha =
+                    dto.IdCancha;
 
-            reservacion.FechaInicio =
-                dto.FechaInicio;
+                reservacion.FechaInicio =
+                    dto.FechaInicio;
 
-            reservacion.FechaFin =
-                dto.FechaFin;
+                reservacion.FechaFin =
+                    dto.FechaFin;
 
-            reservacion.DuracionHoras =
-                duracionHoras;
+                reservacion.DuracionHoras =
+                    duracionHoras;
 
-            reservacion.PrecioHora =
-                cancha.PrecioHora;
+                reservacion.PrecioHora =
+                    cancha.PrecioHora;
 
-            reservacion.Total =
-                Math.Round(
-                    duracionHoras *
-                    cancha.PrecioHora,
-                    2
-                );
+                reservacion.Total =
+                    Math.Round(
+                        duracionHoras *
+                        cancha.PrecioHora,
+                        2);
 
-            reservacion.Observaciones =
-                dto.Observaciones?.Trim();
+                reservacion.Observaciones =
+                    dto.Observaciones?.Trim();
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+                await transaccion.CommitAsync();
 
-            await transaccion.CommitAsync();
-
-            return Ok(
-                new
+                return Ok(new
                 {
                     mensaje =
                         "Reservación actualizada correctamente.",
-
                     reservacion.DuracionHoras,
                     reservacion.Total
-                }
-            );
+                });
+            }
+
+            return await strategy.ExecuteAsync(
+                EjecutarTransaccion);
         }
 
         [HttpPut("{id:int}/cancelar")]
-        public async Task<IActionResult> Cancelar(
-            int id)
+        public async Task<IActionResult> Cancelar(int id)
         {
             var reservacion =
                 await _context.Reservaciones
-                    .Include(
-                        r => r.EstadoReservacion
-                    )
-                    .FirstOrDefaultAsync(
-                        r => r.IdReservacion == id
-                    );
+                .Include(r => r.EstadoReservacion)
+                .FirstOrDefaultAsync(r =>
+                    r.IdReservacion == id);
 
             if (reservacion == null)
             {
-                return NotFound(
-                    new
-                    {
-                        mensaje =
-                            "Reservación no encontrada."
-                    }
-                );
+                return NotFound(new
+                {
+                    mensaje =
+                        "Reservación no encontrada."
+                });
             }
 
-            if (
-                reservacion.EstadoReservacion.Nombre
-                != "RESERVADA"
-            )
+            if (reservacion.EstadoReservacion.Nombre
+                != "RESERVADA")
             {
-                return BadRequest(
-                    new
-                    {
-                        mensaje =
-                            "Solo una reservación RESERVADA puede cancelarse."
-                    }
-                );
+                return BadRequest(new
+                {
+                    mensaje =
+                        "Solo una reservación RESERVADA puede cancelarse."
+                });
             }
 
             var estadoCancelado =
                 await _context.EstadosReservacion
-                    .SingleAsync(
-                        e => e.Nombre == "CANCELADA"
-                    );
+                .SingleAsync(e =>
+                    e.Nombre == "CANCELADA");
 
             reservacion.IdEstadoReservacion =
-                estadoCancelado
-                    .IdEstadoReservacion;
+                estadoCancelado.IdEstadoReservacion;
 
             await _context.SaveChangesAsync();
 
-            return Ok(
-                new
-                {
-                    mensaje =
-                        "Reservación cancelada. El horario quedó liberado."
-                }
-            );
+            return Ok(new
+            {
+                mensaje =
+                    "Reservación cancelada. El horario quedó liberado."
+            });
         }
 
         [HttpPut("{id:int}/utilizar")]
-        public async Task<IActionResult> Utilizar(
-            int id)
+        public async Task<IActionResult> Utilizar(int id)
         {
             var reservacion =
                 await _context.Reservaciones
-                    .Include(
-                        r => r.EstadoReservacion
-                    )
-                    .FirstOrDefaultAsync(
-                        r => r.IdReservacion == id
-                    );
+                .Include(r => r.EstadoReservacion)
+                .FirstOrDefaultAsync(r =>
+                    r.IdReservacion == id);
 
             if (reservacion == null)
             {
-                return NotFound(
-                    new
-                    {
-                        mensaje =
-                            "Reservación no encontrada."
-                    }
-                );
+                return NotFound(new
+                {
+                    mensaje =
+                        "Reservación no encontrada."
+                });
             }
 
-            if (
-                reservacion.EstadoReservacion.Nombre
-                != "RESERVADA"
-            )
+            if (reservacion.EstadoReservacion.Nombre
+                != "RESERVADA")
             {
-                return BadRequest(
-                    new
-                    {
-                        mensaje =
-                            "Solo una reservación RESERVADA puede marcarse como utilizada."
-                    }
-                );
+                return BadRequest(new
+                {
+                    mensaje =
+                        "Solo una reservación RESERVADA puede marcarse como utilizada."
+                });
             }
 
             var estadoUtilizado =
                 await _context.EstadosReservacion
-                    .SingleAsync(
-                        e => e.Nombre == "UTILIZADA"
-                    );
+                .SingleAsync(e =>
+                    e.Nombre == "UTILIZADA");
 
             reservacion.IdEstadoReservacion =
-                estadoUtilizado
-                    .IdEstadoReservacion;
+                estadoUtilizado.IdEstadoReservacion;
 
             await _context.SaveChangesAsync();
 
-            return Ok(
-                new
-                {
-                    mensaje =
-                        "Reservación marcada como utilizada."
-                }
-            );
+            return Ok(new
+            {
+                mensaje =
+                    "Reservación marcada como utilizada."
+            });
         }
     }
 }
